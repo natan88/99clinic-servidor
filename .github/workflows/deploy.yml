@@ -1,0 +1,123 @@
+name: Deploy to GCP Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: npm
+
+      - name: Install dependencies for lock validation
+        run: npm ci --no-fund --no-audit
+
+      - name: Configure SSH access
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ vars.SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Deploy to production server
+        run: |
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes -p "${{ vars.SSH_PORT }}" "${{ vars.SSH_USER }}@${{ vars.SSH_HOST }}" <<'SSH'
+            set -euo pipefail
+
+            APP_DIR='${{ vars.APP_DIR }}'
+            APP_NAME='${{ vars.APP_NAME }}'
+            GIT_REPO='${{ vars.GIT_REPO }}'
+            NODE_ENV='${{ vars.NODE_ENV }}'
+            SITE_URL='${{ vars.SITE_URL }}'
+            SITE_PORT='${{ vars.SITE_PORT }}'
+
+            echo "==> Garantindo diretório do app"
+            mkdir -p "$APP_DIR"
+
+            if [ ! -d "$APP_DIR/.git" ]; then
+              git clone "$GIT_REPO" "$APP_DIR"
+            fi
+
+            cd "$APP_DIR"
+            git fetch --all --prune --tags
+            git checkout main || git checkout -b main origin/main
+            git pull --ff-only origin main
+
+            echo "==> Criando arquivo .env"
+            cat > .env <<ENVFILE
+            NODE_ENV=${{ vars.NODE_ENV }}
+            SITE_PORT=${{ vars.SITE_PORT }}
+            SITE_URL=${{ vars.SITE_URL }}
+
+            MYSQL_HOST='${{ secrets.MYSQL_HOST }}'
+            MYSQL_PORT='${{ secrets.MYSQL_PORT }}'
+            MYSQL_USER='${{ secrets.MYSQL_USER }}'
+            MYSQL_PASS='${{ secrets.MYSQL_PASS }}'
+            MYSQL_DB='${{ secrets.MYSQL_DB }}'
+
+            REDIS_HOST='${{ secrets.REDIS_HOST }}'
+            REDIS_PORT='${{ secrets.REDIS_PORT }}'
+            REDIS_PASSWORD='${{ secrets.REDIS_PASSWORD }}'
+
+            SMTP_EMAIL='${{ secrets.SMTP_EMAIL }}'
+            SMTP_REPLAY_TO='${{ secrets.SMTP_REPLAY_TO }}'
+            SMTP_SERVICE='${{ secrets.SMTP_SERVICE }}'
+            SMTP_HOST='${{ secrets.SMTP_HOST }}'
+            SMTP_PORT='${{ secrets.SMTP_PORT }}'
+            SMTP_AUTH='${{ secrets.SMTP_AUTH }}'
+            SMTP_SSL='${{ secrets.SMTP_SSL }}'
+            SMTP_IGNORE_TLS='${{ secrets.SMTP_IGNORE_TLS }}'
+            SMTP_LOGIN='${{ secrets.SMTP_LOGIN }}'
+            SMTP_PASSWORD='${{ secrets.SMTP_PASSWORD }}'
+
+            GCP_PROJECT_ID='${{ secrets.GCP_PROJECT_ID }}'
+            GCP_CLIENT_EMAIL='${{ secrets.GCP_CLIENT_EMAIL }}'
+            GCP_PRIVATE_KEY='${{ secrets.GCP_PRIVATE_KEY }}'
+            GCP_BUCKET_NAME='${{ secrets.GCP_BUCKET_NAME }}'
+
+            GCALENDAR_CLIENT_ID='${{ secrets.GCALENDAR_CLIENT_ID }}'
+            GCALENDAR_CLIENT_SECRET='${{ secrets.GCALENDAR_CLIENT_SECRET }}'
+            GCALENDAR_REDIRECT_URL='${{ secrets.GCALENDAR_REDIRECT_URL }}'
+
+            AUTH_IMG_CDN='${{ secrets.AUTH_IMG_CDN }}'
+            CLOUDIMG_URL='${{ secrets.CLOUDIMG_URL }}'
+            ENVFILE
+
+            echo "==> Instalando dependências da aplicação"
+            npm ci --omit=dev --no-fund --no-audit
+
+            echo "==> Reiniciando ou iniciando o processo PM2"
+            if pm2 show "$APP_NAME" >/dev/null 2>&1; then
+              pm2 reload "$APP_NAME" --update-env
+            else
+              pm2 start app/index.js --name "$APP_NAME" --watch false --time
+            fi
+
+            echo "==> Salvando configuração do PM2"
+            pm2 save
+
+            echo "==> Verificando saúde da aplicação"
+            curl -fsSL --max-time 20 "$SITE_URL" > /dev/null
+
+            echo "==> Status final do PM2"
+            pm2 status
+          SSH
