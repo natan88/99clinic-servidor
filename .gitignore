@@ -1,0 +1,22 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+package-lock.json
+/nbproject/private/
+/nbproject/*
+/.vscode/*
+*.code-workspace
+
+
+# não enviar arquivos da pasta temp, a não ser o arquivo readme
+temp/*
+!temp/readme 
+.DS_Store
+.env

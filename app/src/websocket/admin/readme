@@ -1,0 +1,6 @@
+# Administração interna do 99Clinic
+
+Essa é a pasta que terá os endpoints websocket da administração interna
+
+## Objetivo
+Gerenciar os clientes, desde listagem para simples acompanhamento até o gerenciamento das faturas
