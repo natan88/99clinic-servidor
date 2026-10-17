@@ -60,7 +60,8 @@ jobs:
             cd "$APP_DIR"
             git fetch --all --prune --tags
             git checkout main || git checkout -b main origin/main
-            git pull --ff-only origin main
+            git reset --hard origin/main
+            git clean -fd
 
             echo "==> Criando arquivo .env"
             cat > .env <<ENVFILE
