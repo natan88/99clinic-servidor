@@ -134,5 +134,9 @@
     });
     // ========== fim LOGIN / CADASTRO FACEBOOK
 
+    router.get('/ping', function(req, res) {
+        res.send("pong");
+    });
+
     module.exports = router;
 }());
