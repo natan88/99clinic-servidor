@@ -64,44 +64,44 @@ jobs:
             git clean -fd
 
             echo "==> Criando arquivo .env"
-            cat > .env <<ENVFILE
-            NODE_ENV=${{ vars.NODE_ENV }}
-            SITE_PORT=${{ vars.SITE_PORT }}
-            SITE_URL=${{ vars.SITE_URL }}
-
-            MYSQL_HOST='${{ secrets.MYSQL_HOST }}'
-            MYSQL_PORT='${{ secrets.MYSQL_PORT }}'
-            MYSQL_USER='${{ secrets.MYSQL_USER }}'
-            MYSQL_PASS='${{ secrets.MYSQL_PASS }}'
-            MYSQL_DB='${{ secrets.MYSQL_DB }}'
-
-            REDIS_HOST='${{ secrets.REDIS_HOST }}'
-            REDIS_PORT='${{ secrets.REDIS_PORT }}'
-            REDIS_PASSWORD='${{ secrets.REDIS_PASSWORD }}'
-
-            SMTP_EMAIL='${{ secrets.SMTP_EMAIL }}'
-            SMTP_REPLAY_TO='${{ vars.SMTP_REPLAY_TO }}'
-            SMTP_SERVICE='${{ secrets.SMTP_SERVICE }}'
-            SMTP_HOST='${{ secrets.SMTP_HOST }}'
-            SMTP_PORT='${{ secrets.SMTP_PORT }}'
-            SMTP_AUTH='${{ secrets.SMTP_AUTH }}'
-            SMTP_SSL='${{ secrets.SMTP_SSL }}'
-            SMTP_IGNORE_TLS='${{ secrets.SMTP_IGNORE_TLS }}'
-            SMTP_LOGIN='${{ secrets.SMTP_LOGIN }}'
-            SMTP_PASSWORD='${{ secrets.SMTP_PASSWORD }}'
-
-            GCP_PROJECT_ID='${{ secrets.GCP_PROJECT_ID }}'
-            GCP_CLIENT_EMAIL='${{ secrets.GCP_CLIENT_EMAIL }}'
-            GCP_PRIVATE_KEY='${{ secrets.GCP_PRIVATE_KEY }}'
-            GCP_BUCKET_NAME='${{ vars.GCP_BUCKET_NAME }}'
-
-            GCALENDAR_CLIENT_ID='${{ secrets.GCALENDAR_CLIENT_ID }}'
-            GCALENDAR_CLIENT_SECRET='${{ secrets.GCALENDAR_CLIENT_SECRET }}'
-            GCALENDAR_REDIRECT_URL='${{ secrets.GCALENDAR_REDIRECT_URL }}'
-
-            AUTH_IMG_CDN='${{ secrets.AUTH_IMG_CDN }}'
-            CLOUDIMG_URL='${{ secrets.CLOUDIMG_URL }}'
-            ENVFILE
+            printf '%s\n' \
+              "NODE_ENV=${{ vars.NODE_ENV }}" \
+              "SITE_PORT=${{ vars.SITE_PORT }}" \
+              "SITE_URL=${{ vars.SITE_URL }}" \
+              "" \
+              "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" \
+              "MYSQL_PORT=${{ secrets.MYSQL_PORT }}" \
+              "MYSQL_USER=${{ secrets.MYSQL_USER }}" \
+              "MYSQL_PASS=${{ secrets.MYSQL_PASS }}" \
+              "MYSQL_DB=${{ secrets.MYSQL_DB }}" \
+              "" \
+              "REDIS_HOST=${{ secrets.REDIS_HOST }}" \
+              "REDIS_PORT=${{ secrets.REDIS_PORT }}" \
+              "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" \
+              "" \
+              "SMTP_EMAIL=${{ secrets.SMTP_EMAIL }}" \
+              "SMTP_REPLAY_TO=${{ vars.SMTP_REPLAY_TO }}" \
+              "SMTP_SERVICE=${{ secrets.SMTP_SERVICE }}" \
+              "SMTP_HOST=${{ secrets.SMTP_HOST }}" \
+              "SMTP_PORT=${{ secrets.SMTP_PORT }}" \
+              "SMTP_AUTH=${{ secrets.SMTP_AUTH }}" \
+              "SMTP_SSL=${{ secrets.SMTP_SSL }}" \
+              "SMTP_IGNORE_TLS=${{ secrets.SMTP_IGNORE_TLS }}" \
+              "SMTP_LOGIN=${{ secrets.SMTP_LOGIN }}" \
+              "SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}" \
+              "" \
+              "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" \
+              "GCP_CLIENT_EMAIL=${{ secrets.GCP_CLIENT_EMAIL }}" \
+              "GCP_PRIVATE_KEY=${{ secrets.GCP_PRIVATE_KEY }}" \
+              "GCP_BUCKET_NAME=${{ vars.GCP_BUCKET_NAME }}" \
+              "" \
+              "GCALENDAR_CLIENT_ID=${{ secrets.GCALENDAR_CLIENT_ID }}" \
+              "GCALENDAR_CLIENT_SECRET=${{ secrets.GCALENDAR_CLIENT_SECRET }}" \
+              "GCALENDAR_REDIRECT_URL=${{ secrets.GCALENDAR_REDIRECT_URL }}" \
+              "" \
+              "AUTH_IMG_CDN=${{ secrets.AUTH_IMG_CDN }}" \
+              "CLOUDIMG_URL=${{ secrets.CLOUDIMG_URL }}" \
+              > .env
 
             echo "==> Instalando dependências da aplicação"
             npm ci --omit=dev --no-fund --no-audit
