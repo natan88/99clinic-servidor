@@ -106,6 +106,13 @@ jobs:
             echo "==> Instalando dependências da aplicação"
             npm ci --omit=dev --no-fund --no-audit
 
+            echo "==> Preparando ambiente do PM2"
+            export PATH="$HOME/.nvm/versions/node/$(node -p 'process.versions.node')/bin:$PATH"
+            if [ -f "$HOME/.nvm/nvm.sh" ]; then
+              . "$HOME/.nvm/nvm.sh"
+            fi
+            export PATH="$(dirname "$(command -v node 2>/dev/null || echo "$HOME/.nvm/versions/node/$(node -p 'process.versions.node' 2>/dev/null || echo 'v18.20.0')/bin/node")"):$PATH"
+
             echo "==> Reiniciando ou iniciando o processo PM2"
             if pm2 show "$APP_NAME" >/dev/null 2>&1; then
               pm2 reload "$APP_NAME" --update-env
