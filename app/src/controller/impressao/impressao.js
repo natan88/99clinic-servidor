@@ -399,7 +399,7 @@
 
                         // TESTE, retirado daqui: https://kainikhil.medium.com/nodejs-how-to-generate-and-properly-serve-pdf-6835737d118e
                         this.pdf.pipe(
-                            fs.createWriteStream( '/home/bsbinfor/app/temp/' + this.nomeArquivo ).on('error', (error) => {
+                            fs.createWriteStream( '/home/bsbinfor/servidor/temp/' + this.nomeArquivo ).on('error', (error) => {
                                 // callback('Erro interno ao gerar arquivo');
                             }).on('end', () => {
                                 // callback();
