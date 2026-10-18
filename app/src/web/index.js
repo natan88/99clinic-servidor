@@ -27,7 +27,7 @@
     web.disable('x-powered-by');// desabilita a informação de que o servidor web é o EXPRESS
     web.use(function (req, res, next) { // altera a informação do servidor web
       res.header("X-powered-by", "PHP 5.3");
-      res.header('Access-Control-Allow-Origin', "*");// quando publicar, deve deixar comentado para impedir duplicidade com o nginx;
+    //   res.header('Access-Control-Allow-Origin', "*");// quando publicar, deve deixar comentado para impedir duplicidade com o nginx;
       res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS');
       res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,accept,x-requested-with'); 
       next();
