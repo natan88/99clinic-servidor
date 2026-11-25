@@ -3,6 +3,7 @@
  */
 
 require('dotenv').config();
+const path = require('path');
 
 // IMPORTANTE: a grande maioria das configurações setadas aqui devem ser definidas via VARIAVEIS DE AMBIENTE
 ;(function () {
@@ -11,7 +12,8 @@ require('dotenv').config();
     module.exports = {
        porta_web: process.env.SITE_PORT || 3000,
        porta_ws: 3099,
-       url_site: process.env.SITE_URL || "http://app.99clinic.local",       
+       url_site: process.env.SITE_URL || "http://app.99clinic.local",
+       pastaTemp: path.resolve(__dirname, '../../../temp'), // arquivos temporários, ex: impressão
        
        mysql: {
            port: process.env.MYSQL_PORT || 3306,
