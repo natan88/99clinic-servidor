@@ -50,8 +50,10 @@ require('dotenv').config();
        gcp: {
             projectId: process.env.GCP_PROJECT_ID || null,
             clientEmail: process.env.GCP_CLIENT_EMAIL || null,
+            // dotenv 8 le apenas UMA linha por variavel: a chave precisa estar em linha unica,
+            // com "\n" literal. Aqui removemos aspas externas e convertemos "\n" em quebra real.
             privateKey: process.env.GCP_PRIVATE_KEY
-                ? process.env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n')
+                ? process.env.GCP_PRIVATE_KEY.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n')
                 : null,
             storage: {
                 bucketName: process.env.GCP_BUCKET_NAME || '99clinic-dev'
