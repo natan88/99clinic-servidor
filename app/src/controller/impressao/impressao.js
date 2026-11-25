@@ -12,6 +12,9 @@
         _ = require('underscore'),
         async = require('async'),
         fs = require('fs'),
+        path = require('path'),
+        { pipeline } = require('stream'),
+        conf = require('src/util/config'),
         uuid = require('uuid'),
         moment = require('moment'),
         pdfMake = require('pdfmake'),
@@ -23,8 +26,7 @@
         Cliente = require("src/controller/cliente/cliente.js").Cliente,
         atendimento = require('src/controller/atendimento/atendimento'),
         storage = require('src/lib/storage/googleStorage'),
-        conf = require('src/util/config'),
-        request = require('request').defaults({ encoding: null }),
+        { getImagemPDF } = require('src/controller/impressao/impressao-imagem'),
         util = require('src/util/util'),
         log = require('src/util/logInterno');
 
@@ -266,7 +268,7 @@
                         if( !this.empresa.logo ) return callback(); // se não tiver logo
 
                         // baixa a logomarca
-                        this.getLogoEmpresaBase64CloudImage( this.empresa.logo )
+                        getImagemPDF( storage.getBucket(), `${storage.getPastaEmpresa( this.empresaID )}/${this.empresa.logo}` )
                         .then( logoBase64 => {
                             this.logomarca = logoBase64;
                             callback();
@@ -332,8 +334,8 @@
 
                         // baixa a imagem e a transforma em base64
                         async.each( prontuario.anexo, ( anexo, callbackAnexo ) => {
-                            let imgLargura = 595 - this.margens.left - this.margens.right;
-                            this.getImagemBase64CloudImage( '_prontuario_', anexo.arquivo, imgLargura, 'n' ) 
+                            const caminho = `${storage.getPastaProntuario( this.empresaID, this.usuario.id )}/${anexo.arquivo}`;
+                            getImagemPDF( storage.getBucket(), caminho )
                             .then( file => {
                                 anexo.url = file;
                                 callbackAnexo();
@@ -388,29 +390,18 @@
 
                     // grava o PDF em arquivo
                     try {
-                        // let fsw = fs.createWriteStream( './temp/' + this.nomeArquivo );
                         this.pdf = this.printer.createPdfKitDocument( this.docDefinicao );
-                        // this.pdf.pipe( fsw );
-                        // this.pdf.end();
-                          
-                        // this.pdf.on('end', () => {
-                        //     callback();
-                        // });
 
-                        // TESTE, retirado daqui: https://kainikhil.medium.com/nodejs-how-to-generate-and-properly-serve-pdf-6835737d118e
-                        this.pdf.pipe(
-                            fs.createWriteStream( '/home/bsbinfor/servidor/temp/' + this.nomeArquivo ).on('error', (error) => {
-                                // callback('Erro interno ao gerar arquivo');
-                            }).on('end', () => {
-                                // callback();
-                            })
-                        );
+                        // só responde depois de o arquivo estar gravado, ou com erro se a gravação falhar
+                        pipeline( this.pdf, fs.createWriteStream( path.join( conf.pastaTemp, this.nomeArquivo ) ), ( error ) => {
+                            if( !error ) return callback();
+
+                            let msg = `Falha ao gravar impressão - ID da empresa: ${this.empresaID} \n${error.message}`;
+                            log.registraErro( msg, 'impressao', 'Arquivo: src/controller/impressao/impressao.js - GeraPDF');
+                            callback('Erro ao gerar impressão');
+                        });
 
                         this.pdf.end();
-                        this.pdf.on('end', () => {
-                            callback();
-                        });
-                        // fim TESTE
                     } catch (error) {
                         callback('Erro ao gerar impressão');
 
@@ -439,6 +430,7 @@
                 colunas.push({
                     width: 80,
                     image: this.logomarca,
+                    fit: [ 80, 80 ],
                     absolutePosition: {
                         x: 20,
                         y: 10
@@ -693,7 +685,8 @@
                                 },
                                 {
                                     image: anexo.url,
-                                    // width: 595 - this.margens.right - this.margens.left,// não está sendo passado pois o cloudImage retorna a imagem com essa dimensão
+                                    // a imagem vem no tamanho original, precisa ser limitada à área útil da página
+                                    fit: [ 595 - this.margens.left - this.margens.right, 560 ],
                                     marginBottom: 10
                                 }
                             ]
@@ -826,44 +819,48 @@
 
             // Visão de perto
             if ( campo.resposta.perto ) {
+                // cada olho pode não ter sido preenchido
+                const od = campo.resposta.perto.od || {}, oe = campo.resposta.perto.oe || {};
                 tabela.table.body.push(
                     [
                         {text: 'Perto', rowSpan: 2, alignment: 'center', margin: [0, 18, 0, 0]}, 
                         {text: 'O.D', style: ['po-content', 'center']}, 
-                        { text: campo.resposta.perto.od.esferico || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.od.cilindro || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.od.eixo || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.od.dnp || '', style: ['po-content'] }
+                        { text: od.esferico || '', style: ['po-content'] }, 
+                        { text: od.cilindro || '', style: ['po-content'] }, 
+                        { text: od.eixo || '', style: ['po-content'] }, 
+                        { text: od.dnp || '', style: ['po-content'] }
                     ],
                     [
                         '', 
                         {text: 'O.E', style: ['po-content', 'center']}, 
-                        { text: campo.resposta.perto.oe.esferico || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.oe.cilindro || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.oe.eixo || '', style: ['po-content'] }, 
-                        { text: campo.resposta.perto.oe.dnp || '', style: ['po-content'] }
+                        { text: oe.esferico || '', style: ['po-content'] }, 
+                        { text: oe.cilindro || '', style: ['po-content'] }, 
+                        { text: oe.eixo || '', style: ['po-content'] }, 
+                        { text: oe.dnp || '', style: ['po-content'] }
                     ]
                 );
             }
 
             // Visão de longe
             if ( campo.resposta.longe ) {
+                // cada olho pode não ter sido preenchido
+                const od = campo.resposta.longe.od || {}, oe = campo.resposta.longe.oe || {};
                 tabela.table.body.push(
                     [
                         {text: 'Longe', rowSpan: 2, alignment: 'center', margin: [0, 18, 0, 0]}, 
                         {text: 'O.D', style: ['po-content', 'center']}, 
-                        { text: campo.resposta.longe.od.esferico || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.od.cilindro || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.od.eixo || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.od.dnp || '', style: ['po-content'] }
+                        { text: od.esferico || '', style: ['po-content'] }, 
+                        { text: od.cilindro || '', style: ['po-content'] }, 
+                        { text: od.eixo || '', style: ['po-content'] }, 
+                        { text: od.dnp || '', style: ['po-content'] }
                     ],
                     [
                         '', 
                         {text: 'O.E', style: ['po-content', 'center']}, 
-                        { text: campo.resposta.longe.oe.esferico || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.oe.cilindro || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.oe.eixo || '', style: ['po-content'] }, 
-                        { text: campo.resposta.longe.oe.dnp || '', style: ['po-content'] }
+                        { text: oe.esferico || '', style: ['po-content'] }, 
+                        { text: oe.cilindro || '', style: ['po-content'] }, 
+                        { text: oe.eixo || '', style: ['po-content'] }, 
+                        { text: oe.dnp || '', style: ['po-content'] }
                     ]
                 );
             }
@@ -905,84 +902,6 @@
                 .replace('.', ',')
                 .replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.')
             );
-        }
-
-        /**
-         * Retorna uma imagem no formato base64 do Google Storage
-         * Não está em uso
-         * 
-         * @param {String} arquivo endereço completo da imagem no google storage
-         */
-        getImagemBase64GoogleStorage( arquivo ) {
-            return new Promise( ( resolve, reject ) => {
-                let remoteFile = storage.getBucket().file( arquivo );
-                // 1º pega os metadados
-                remoteFile.getMetadata().then( data => {
-                    let tipo = 'image/png';
-                    if(data[0].contentType) tipo = data[0].contentType;
-                    let stream = remoteFile.createReadStream();
-
-                    let chunks = [];
-
-                    stream.on('data', (chunk) => {
-                        chunks.push( chunk );
-                    });
-
-                    stream.on('end', () => {
-                        let result = Buffer.concat(chunks);
-                        resolve( `data:${tipo};base64,` + result.toString('base64') );
-                    });
-
-                    stream.on('error', (error) => {
-                        reject('erro leitura imagem' );
-                    });
-                }).catch( erro => {
-                    if( erro.code == 404 ) {
-                        return reject('não localizado');
-                    }
-                    reject('error')
-                });
-            });
-        }
-
-        /**
-         * Retorna uma imagem no formato base64 do CloudImage.io
-         * @param {String} arquivo nome do arquivo da logo
-         */
-        getLogoEmpresaBase64CloudImage( arquivo ) {
-            return new Promise( ( resolve, reject ) => {
-                if( !conf.imgCdnUrl || !arquivo ) return reject( 'parametros de configuração não definidos' );
-                let url = `${conf.imgCdnUrl}/bound/80x80/n/_empresalogo_/${this.empresaID}/${arquivo}`;
-
-                request.get( url, ( error, response, body ) => {
-                    if (!error && response.statusCode == 200) {
-                        return resolve( "data:" + response.headers["content-type"] + ";base64," + Buffer.from(body).toString('base64') );
-                    }
-                    reject( 'erro interno' );
-                });
-            });
-        }
-
-        /**
-         * Retorna uma imagem no formato base64 do CloudImage.io
-         * @param {String} localArquivo local do arquivo, com o namespace, para prontário: _prontuario_
-         * @param {String} arquivo nome do arquivo
-         * @param {Integer} width largura da imagem, em pixels
-         * @param {Integer|String} height altura em pixels da imagem. Para 'auto' passar 'n'
-         */
-        getImagemBase64CloudImage( localArquivo, arquivo, width, height ) {
-            return new Promise( ( resolve, reject ) => {
-                if( !conf.imgCdnUrl || !arquivo ) return reject( 'parametros de configuração não definidos' );
-                let url = `${conf.imgCdnUrl}/v7/${localArquivo}/${this.empresaID}/${this.usuario.id}/${arquivo}?w=${width}&h=${height}&func=bound&org_if_sml=1`;
-
-                request.get( url, ( error, response, body ) => {
-                    if (!error && response.statusCode == 200) {
-                        return resolve( "data:" + response.headers["content-type"] + ";base64," + Buffer.from(body).toString('base64') );
-                    }
-
-                    reject( 'erro interno' );
-                });
-            });
         }
 
     } // fim classe

@@ -21,6 +21,7 @@
         multerStorageGoogle = require('src/lib/storage/multerGoogleStorage'),
         storage = require('src/lib/storage/googleStorage'),
         multer = require('multer'),
+        conf = require('src/util/config'),
         log = require('src/util/logInterno');
     
     const { pipeline } = require('stream');
@@ -31,8 +32,7 @@
      * antes em uma requisição websocket
      */
     router.get('/prontuario/:arquivo', auth.logado, (req, res) => {
-        // let file = './temp/' + req.params.arquivo;
-        let file = '/home/bsbinfor/servidor/temp/' + req.params.arquivo;
+        let file = path.join( conf.pastaTemp, req.params.arquivo );
         let mimetype = mime.getType(file);
         if( mimetype != 'application/pdf') {
             return res.status(404).send('Arquivo não encontrado');
