@@ -50,7 +50,9 @@ require('dotenv').config();
        gcp: {
             projectId: process.env.GCP_PROJECT_ID || null,
             clientEmail: process.env.GCP_CLIENT_EMAIL || null,
-            privateKey: process.env.GCP_PRIVATE_KEY || null,
+            privateKey: process.env.GCP_PRIVATE_KEY
+                ? process.env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n')
+                : null,
             storage: {
                 bucketName: process.env.GCP_BUCKET_NAME || '99clinic-dev'
             }
